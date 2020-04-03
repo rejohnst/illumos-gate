@@ -38,6 +38,7 @@
 #include <mem.h>
 #include <mod.h>
 #include <pkg.h>
+#include <sas.h>
 #include <svc.h>
 #include <sw.h>
 #include <zfs.h>
@@ -52,6 +53,7 @@ static const struct topo_builtin _topo_builtins[] = {
 	{ "sw", SW_VERSION, sw_init, sw_fini, TOPO_BLTIN_TYPE_TREE },
 	{ "zfs", ZFS_VERSION, zfs_init, zfs_fini, TOPO_BLTIN_TYPE_TREE },
 	{ "mod", MOD_VERSION, mod_init, mod_fini, TOPO_BLTIN_TYPE_TREE },
+	{ "sas", SAS_VERSION, sas_init, sas_fini, TOPO_BLTIN_TYPE_DIGRAPH },
 	/* hc must go last */
 	{ "hc", HC_VERSION, hc_init, hc_fini, TOPO_BLTIN_TYPE_TREE },
 	{ NULL, 0, NULL, NULL, 0 }

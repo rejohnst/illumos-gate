@@ -35,6 +35,8 @@ BUILTINSRCS = \
 	mem.c \
 	mod.c \
 	pkg.c \
+	sas.c \
+	sas-method.c \
 	svc.c \
 	sw.c \
 	zfs.c
@@ -88,7 +90,7 @@ CERRWARN += -_gcc=-Wno-parentheses
 
 $(DYNLIB)  := LDLIBS += \
 	-lnvpair -lelf -lumem -lxml2 -lkstat -luuid -ldevinfo \
-	-lsmbios -lc -ldevid -lipmi -lscf -lpcidb
+	-lsmbios -lc -ldevid -lipmi -lscf -lpcidb -lSMHBAAPI
 NATIVE_LIBS +=	libxml2.so
 
 .KEEP_STATE:

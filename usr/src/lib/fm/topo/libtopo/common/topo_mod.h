@@ -101,6 +101,8 @@ extern nvlist_t *topo_mod_swfmri(topo_mod_t *, int,
     char *, char *, nvlist_t *,
     char *, char *, char *, char *, int64_t,
     char *, char *, int64_t, char *, int64_t, char **, uint_t);
+extern nvlist_t *topo_mod_sasfmri(topo_mod_t *, int, const char *,
+    topo_instance_t, nvlist_t *);
 extern int topo_mod_nvl2str(topo_mod_t *, nvlist_t *, char **);
 extern int topo_mod_str2nvl(topo_mod_t *, const char *,  nvlist_t **);
 extern int topo_prop_setmutable(tnode_t *node, const char *pgname,

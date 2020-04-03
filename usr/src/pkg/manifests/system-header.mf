@@ -1352,6 +1352,7 @@ file path=usr/include/sys/scsi/generic/inquiry.h
 file path=usr/include/sys/scsi/generic/message.h
 file path=usr/include/sys/scsi/generic/mode.h
 file path=usr/include/sys/scsi/generic/persist.h
+file path=usr/include/sys/scsi/generic/sas.h
 file path=usr/include/sys/scsi/generic/sense.h
 file path=usr/include/sys/scsi/generic/sff_frames.h
 file path=usr/include/sys/scsi/generic/smp_frames.h

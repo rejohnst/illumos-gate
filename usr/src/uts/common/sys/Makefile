@@ -21,7 +21,7 @@
 
 #
 # Copyright (c) 1989, 2010, Oracle and/or its affiliates. All rights reserved.
-# Copyright 2019 Joyent, Inc.
+# Copyright 2020 Joyent, Inc.
 # Copyright 2013 Garrett D'Amore <garrett@damore.org>
 # Copyright 2013 Saso Kiselkov. All rights reserved.
 # Copyright 2015 Igor Kozhukhov <ikozhukhov@gmail.com>
@@ -899,6 +899,7 @@ SCSIGENHDRS=		\
 	message.h	\
 	mode.h		\
 	persist.h	\
+	sas.h		\
 	sense.h		\
 	sff_frames.h	\
 	smp_frames.h	\

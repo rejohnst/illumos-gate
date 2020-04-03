@@ -22,12 +22,14 @@
 # Copyright 2008 Sun Microsystems, Inc.  All rights reserved.
 # Use is subject to license terms.
 #
-# ident	"%Z%%M%	%I%	%E% SMI"
+
+#
+# Copyright 2020 Joyent, Inc.
 #
 
 include ../Makefile.com
 include ../../../../Makefile.lib.64
 
-LDLIBS += -lzfs
+LDLIBS += -lzfs -L$(ROOT)/usr/lib/scsi/amd64 -lsmp -R/usr/lib/scsi/amd64
 
 install: all $(ROOTLIBS64) $(ROOTLINKS64) $(ROOTLINT64)

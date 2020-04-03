@@ -158,6 +158,8 @@ extern "C" {
 #define	TOPO_STORAGE_FIRMWARE_REV	"firmware-revision"
 #define	TOPO_STORAGE_SAS_PHY_MASK	"receptacle-pm"
 #define	TOPO_STORAGE_SAS_CONNECTOR_TYPE	"sas-connector-type"
+#define	TOPO_STORAGE_LOGICAL_DISK	"logical-disk"
+#define	TOPO_STORAGE_SERIAL_NUMBER	"serial-number"
 
 #define	TOPO_PGROUP_SES		"ses"
 /* Applied  any SES standard related topo node. */

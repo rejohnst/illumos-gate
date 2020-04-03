@@ -295,6 +295,7 @@ file path=usr/include/fm/topo_hc.h
 file path=usr/include/fm/topo_list.h
 file path=usr/include/fm/topo_method.h
 file path=usr/include/fm/topo_mod.h
+file path=usr/include/fm/topo_sas.h
 #
 #	64-bit .so.1
 #
@@ -376,7 +377,7 @@ file path=usr/lib/fm/eft/sensor.eft mode=0444
 file path=usr/lib/fm/eft/storage.eft mode=0444
 #
 # usr/lib/fm/fmd executables:
-#	- fmd is common, as are fminject, fmsim and fmtopo
+#	- fmd is common, as are fminject, fmsim, fmtopo and sastopo
 #	- ipmitopo and mcdecode are global zone only
 #
 file path=usr/lib/fm/fmd/fmd mode=0555 variant.opensolaris.zone=__NODEFAULT
@@ -439,6 +440,8 @@ file path=usr/lib/fm/fmd/plugins/zfs-diagnosis.conf
 file path=usr/lib/fm/fmd/plugins/zfs-diagnosis.so mode=0555
 file path=usr/lib/fm/fmd/plugins/zfs-retire.conf
 file path=usr/lib/fm/fmd/plugins/zfs-retire.so mode=0555
+file path=usr/lib/fm/fmd/sastopo mode=0555 \
+    variant.opensolaris.zone=__NODEFAULT
 #
 # fmri scheme support: all are common to both global and non-global zones
 #

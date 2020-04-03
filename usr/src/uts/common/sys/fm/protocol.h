@@ -202,6 +202,7 @@ extern "C" {
 #define	FM_FMRI_SCHEME_ZFS		"zfs"
 #define	FM_FMRI_SCHEME_SW		"sw"
 #define	FM_FMRI_SCHEME_PATH		"path"
+#define	FM_FMRI_SCHEME_SAS		"sas"
 
 /* Scheme versions */
 #define	FMD_SCHEME_VERSION0		0
@@ -229,6 +230,8 @@ extern "C" {
 #define	FM_SW_SCHEME_VERSION		SW_SCHEME_VERSION0
 #define	PATH_SCHEME_VERSION0		0
 #define	FM_PATH_SCHEME_VERSION		PATH_SCHEME_VERSION0
+#define	SAS_SCHEME_VERSION0		0
+#define	FM_SAS_SCHEME_VERSION		SAS_SCHEME_VERSION0
 
 /* hc scheme member names */
 #define	FM_FMRI_HC_SERIAL_ID		"serial"
@@ -338,6 +341,13 @@ extern "C" {
 #define	FM_FMRI_PATH_NAME		"path-name"
 #define	FM_FMRI_PATH_INST		"path-instance"
 #define	FM_FMRI_PATH_DIGRAPH_SCHEME	"path-digraph-scheme"
+
+/* sas scheme member names */
+#define	FM_FMRI_SAS_VERSION		"sas-scheme-version"
+#define	FM_FMRI_SAS_START_PHY		"start-phy"
+#define	FM_FMRI_SAS_END_PHY		"end-phy"
+#define	FM_FMRI_SAS_NAME		"sas-name"
+#define	FM_FMRI_SAS_ADDR		"sas-addr"
 
 extern nv_alloc_t *fm_nva_xcreate(char *, size_t);
 extern void fm_nva_xdestroy(nv_alloc_t *);

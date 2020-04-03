@@ -23,6 +23,10 @@
  * Use is subject to license terms.
  */
 /*
+ * Copyright 2020 Joyent, Inc.
+ */
+
+/*
  * SAS Common Structures and Definitions
  * sas2r14, simplified/reduced
  */
@@ -76,13 +80,13 @@ typedef struct {
 	DECL_BITFIELD2(
 	    connection_rate		:4,
 	    features			:4);
-	uint16_t 	itag;			/* initiator connection tag */
-	uint8_t 	sas_dst[8];		/* destination sas address */
-	uint8_t 	sas_src[8];		/* source sas address */
-	uint8_t 	src_zone_group;		/* source zone group  */
-	uint8_t 	path_block_count;	/* pathway blocked count */
+	uint16_t	itag;			/* initiator connection tag */
+	uint8_t		sas_dst[8];		/* destination sas address */
+	uint8_t		sas_src[8];		/* source sas address */
+	uint8_t		src_zone_group;		/* source zone group  */
+	uint8_t		path_block_count;	/* pathway blocked count */
 	uint16_t	arb_wait_time;		/* arbitration wait time */
-	uint8_t 	compat[4];		/* 'more' compatible features */
+	uint8_t		compat[4];		/* 'more' compatible features */
 } sas_open_af_t;
 
 #define	SAS_AF_IDENTIFY			0
@@ -193,6 +197,172 @@ typedef struct {
  * Maximum SMP payload size, including CRC
  */
 #define	SAS_SMP_MAX_PAYLOAD		1032
+
+#define	PROTOCOL_SPECIFIC_PAGE		0x18
+#define	ENHANCED_PHY_CONTROL_PAGE	0x19
+
+#pragma pack(1)
+/*
+ * SAS PHY Discovery Mode Sense Page
+ *
+ * See SPL 4, section 9.2.7.5
+ */
+typedef struct sas_phys_disc_mode_page {
+	DECL_BITFIELD3(
+	    spdm_pagecode	:6,
+	    spdm_spf		:1,
+	    spdm_ps		:1);
+	uint8_t spdm_subpagecode;
+	uint16_t spdm_pagelen;
+	uint8_t _reserved1;
+	DECL_BITFIELD2(
+	    spdm_proto_id	:4,
+	    _reserved2		:4);
+	uint8_t spdm_gencode;
+	uint8_t spdm_nphys;
+	uint8_t spdm_descr[1];
+} sas_phys_disc_mode_page_t;
+
+/*
+ * SAS Mode PHY Descriptor
+ *
+ * See SPL 4, section 9.2.7.5
+ */
+typedef struct sas_phy_descriptor {
+	uint8_t _reserved1;
+	uint8_t spde_phy_id;
+	uint16_t _reserved2;
+	DECL_BITFIELD3(
+	    spde_attach_reason	:4,
+	    spde_attach_devtype	:3,
+	    _reserved3		:1);
+	DECL_BITFIELD2(
+	    spde_neg_rate	:4,
+	    spde_reason		:4);
+	DECL_BITFIELD5(
+	    _reserved4			:1,
+	    spde_att_smp_ini_port	:1,
+	    spde_att_stp_ini_port	:1,
+	    spde_att_ssp_ini_port	:1,
+	    _reserved5			:4);
+	DECL_BITFIELD5(
+	    _reserved6			:1,
+	    spde_att_smp_tgt_port	:1,
+	    spde_att_stp_tgt_port	:1,
+	    spde_att_ssp_tgt_port	:1,
+	    _reserved7			:4);
+	uint64_t spde_sas_addr;
+	uint64_t spde_att_sas_addr;
+	uint8_t spde_att_phy_id;
+	DECL_BITFIELD7(
+		spde_att_brk_reply	:1,
+		spde_att_rqst_imside	:1,
+		spde_att_inside	:1,
+		spde_att_partial_cap	:1,
+		spde_att_slumber_cap	:1,
+		spde_att_power_cap	:2,
+		spde_att_persist_cap	:1);
+	DECL_BITFIELD4(
+		spde_att_pwr_dis_cap	:1,
+		spde_att_smp_prio_cpa	:1,
+		spde_att_apta_cap	:1,
+		_reserved8		:5);
+	uint8_t _reserved9[5];
+	DECL_BITFIELD2(
+		spde_hw_min_rate	:4,
+		spde_prog_min_rate	:4);
+	DECL_BITFIELD2(
+		spde_hw_max_rate	:4,
+		spde_prog_max_rate	:4);
+	uint8_t _reserved10[8];
+	uint8_t _spde_vendor_spec[2];
+	uint8_t _reserved11[4];
+} sas_phy_descriptor_t;
+
+/*
+ * SAS Protocol-Specific Log Page
+ * See SPL 4, section 9.2.8.1
+ */
+typedef struct sas_log_page {
+	DECL_BITFIELD3(
+	    slp_pagecode	:6,
+	    slp_spf		:1,
+	    slp_ds		:1);
+	uint8_t slp_subpagecode;
+	uint16_t slp_pagelen;
+	uint8_t slp_portparam[1];
+} sas_log_page_t;
+
+/*
+ * Protocol Specific Port log parameter
+ *
+ * See SPL 4. section 9.2.8.2
+ */
+typedef struct sas_port_param {
+	uint16_t spp_port_id;
+	DECL_BITFIELD5(
+	    spp_fml		:2,
+	    _reserved1		:3,
+	    spp_tsd		:1,
+	    _reserved2		:1,
+	    spp_du		:1);
+	uint8_t spp_param_len;
+	DECL_BITFIELD2(
+	    spp_proto_id	:4,
+	    _reserved3		:4);
+	uint8_t _reserved4;
+	uint8_t spp_gencode;
+	uint8_t spp_nphys;
+	uint8_t spp_descr[1];
+} sas_port_param_t;
+
+/*
+ * SAS PHY Log Descriptor
+ *
+ * See SPL 4, section 9.2.8.2
+ */
+typedef struct sas_phy_log_descr {
+	uint8_t _reserved1;
+	uint8_t sld_phy_id;
+	uint8_t _reserved2;
+	uint8_t sld_len;
+	DECL_BITFIELD3(
+	    sld_att_reason		:4,
+	    sld_att_devtype		:3,
+	    _reserved			:1);
+	DECL_BITFIELD2(
+	    sld_neg_rate		:4,
+	    sld_neg_reason		:4);
+	DECL_BITFIELD5(
+	    _reserved5:1,
+	    sld_att_smp_ini_port	:1,
+	    sld_att_stp_ini_port	:1,
+	    sld_att_ssp_ini_port	:1,
+	    _reserved6			:4);
+	DECL_BITFIELD5(
+	    _reserved7			:1,
+	    sld_att_smp_tgt_port	:1,
+	    sld_att_stp_tgt_port	:1,
+	    sld_att_ssp_tgt_port	:1,
+	    _reserved8			:4);
+	uint64_t sld_sas_addr;
+	uint64_t sld_att_sas_addr;
+	uint8_t sld_att_phy_id;
+	uint8_t _reserved9[7];
+
+	/* PHY error counters */
+	uint32_t sld_inv_dword;
+	uint32_t sld_running_disp;
+	uint32_t sld_loss_sync;
+	uint32_t sld_reset_prob;
+
+	uint8_t _reserved10[2];
+	uint8_t sld_event_descr_len;
+	uint8_t sld_num_event_descr;
+	uint8_t sld_event_descr[1];
+} sas_phy_log_descr_t;
+#pragma pack()
+
 #ifdef	__cplusplus
 }
 #endif

@@ -22,11 +22,13 @@
 # Copyright 2008 Sun Microsystems, Inc.  All rights reserved.
 # Use is subject to license terms.
 #
-# ident	"%Z%%M%	%I%	%E% SMI"
+
+#
+# Copyright 2020 Joyent, Inc.
 #
 
 include ../Makefile.com
 
-LDLIBS += -lzfs
+LDLIBS += -lzfs -L$(ROOT)/usr/lib/scsi -lsmp -R/usr/lib/scsi
 
 install: all $(ROOTLIBS) $(ROOTLINKS) $(ROOTLINT)

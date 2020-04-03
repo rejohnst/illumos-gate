@@ -20,7 +20,7 @@
  */
 /*
  * Copyright (c) 2006, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright 2019 Joyent, Inc.
+ * Copyright 2020 Joyent, Inc.
  */
 
 /*
@@ -615,6 +615,36 @@ topo_mod_swfmri(topo_mod_t *mod, int version,
 
 	if ((fmri = topo_fmri_create(mod->tm_hdl, FM_FMRI_SCHEME_SW,
 	    FM_FMRI_SCHEME_SW, 0, args, &err)) == NULL) {
+		nvlist_free(args);
+		return (set_fmri_err(mod, err));
+	}
+
+	nvlist_free(args);
+
+	(void) topo_mod_nvdup(mod, fmri, &nfp);
+	nvlist_free(fmri);
+
+	return (nfp);
+}
+
+nvlist_t *
+topo_mod_sasfmri(topo_mod_t *mod, int version, const char *nodename,
+    topo_instance_t nodeinst, nvlist_t *auth)
+{
+	nvlist_t *fmri, *args;
+	nvlist_t *nfp = NULL;
+	int err;
+
+	if (version != FM_SAS_SCHEME_VERSION)
+		return (set_fmri_err(mod, EMOD_FMRI_VERSION));
+
+	if (topo_mod_nvalloc(mod, &args, NV_UNIQUE_NAME) != 0 ||
+	    nvlist_add_nvlist(args, TOPO_METH_FMRI_ARG_AUTH, auth) != 0) {
+		return (set_fmri_err(mod, EMOD_FMRI_NVL));
+	}
+
+	if ((fmri = topo_fmri_create(mod->tm_hdl, FM_FMRI_SCHEME_SAS,
+	    nodename, nodeinst, args, &err)) == NULL) {
 		nvlist_free(args);
 		return (set_fmri_err(mod, err));
 	}

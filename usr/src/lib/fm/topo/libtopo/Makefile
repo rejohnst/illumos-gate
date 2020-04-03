@@ -22,11 +22,13 @@
 # Copyright 2008 Sun Microsystems, Inc.  All rights reserved.
 # Use is subject to license terms.
 #
+# Copyright 2020 Joyent, Inc.
+#
 
 include ../../../Makefile.lib
 include ../../Makefile.lib
 
-FMHDRS = libtopo.h topo_mod.h topo_hc.h topo_list.h topo_method.h
+FMHDRS = libtopo.h topo_mod.h topo_hc.h topo_list.h topo_method.h topo_sas.h
 HDRDIR = common
 
 SUBDIRS = $(MACH)

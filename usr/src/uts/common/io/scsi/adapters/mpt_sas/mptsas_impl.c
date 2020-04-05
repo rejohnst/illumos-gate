@@ -1,3 +1,4 @@
+
 /*
  * CDDL HEADER START
  *
@@ -24,7 +25,7 @@
  * Copyright 2012 Nexenta Systems, Inc. All rights reserved.
  * Copyright 2014 OmniTI Computer Consulting, Inc. All rights reserved.
  * Copyright (c) 2014, Tegile Systems Inc. All rights reserved.
- * Copyright (c) 2019, Joyent, Inc.
+ * Copyright 2020 Joyent, Inc.
  */
 
 /*
@@ -2944,6 +2945,228 @@ mptsas_get_enclosure_page0(mptsas_t *mpt, uint32_t page_address,
 		mep->me_fslot = encpage.StartSlot;
 		mep->me_slotleds = NULL;
 	}
+
+	return (rval);
+}
+
+/*
+ * This function is called during attach(9e)  Since this is prior to setting
+ * up the message request/reply queues and before enabling interrupts we use
+ * the doorbell/handshake mechanism (aka the slow lane).
+ */
+int
+mptsas_get_manufacture_page7(mptsas_t *mpt)
+{
+	ddi_dma_attr_t			recv_dma_attrs, page_dma_attrs;
+	ddi_dma_cookie_t		page_cookie;
+	ddi_dma_handle_t		recv_dma_handle, page_dma_handle;
+	ddi_acc_handle_t		recv_accessp, page_accessp;
+	pMpi2ConfigReply_t		configreply;
+	caddr_t				recv_memp, page_memp;
+	int				recv_numbytes;
+	pMpi2ManufacturingPage7_t	m7;
+	uint32_t			flagslength, page_sz;
+	int				rval = DDI_SUCCESS;
+	uint_t				iocstatus;
+	boolean_t		free_recv = B_FALSE, free_page = B_FALSE;
+	nvlist_t			**conn_info_nv = NULL;
+
+	/* uint32_t m7flags; */
+	uint8_t nphys;
+
+	MPTSAS_DISABLE_INTR(mpt);
+
+	/*
+	 * Send a PAGE_HEADER Configuration Request message to get the page
+	 * header for Manufacturing page 0x7.  The page header will contain the
+	 * page version and length, which we need later on in order to
+	 * populate the request to read the actual page contents.
+	 */
+	if (mptsas_send_config_request_msg(mpt, MPI2_CONFIG_ACTION_PAGE_HEADER,
+	    MPI2_CONFIG_PAGETYPE_MANUFACTURING, 0, 7, 0, 0, 0, 0)) {
+		rval = DDI_FAILURE;
+		goto done;
+	}
+
+	/*
+	 * Setup a DMA bindng to receive the MPI Config reply.
+	 */
+	recv_dma_attrs = mpt->m_msg_dma_attr;
+	recv_dma_attrs.dma_attr_sgllen = 1;
+	recv_dma_attrs.dma_attr_granular = (sizeof (MPI2_CONFIG_REPLY));
+
+	if (mptsas_dma_addr_create(mpt, recv_dma_attrs,
+	    &recv_dma_handle, &recv_accessp, &recv_memp,
+	    (sizeof (MPI2_CONFIG_REPLY)), NULL) == FALSE) {
+		rval = DDI_FAILURE;
+		goto done;
+	}
+	free_recv = B_TRUE;
+
+	bzero(recv_memp, sizeof (MPI2_CONFIG_REPLY));
+	configreply = (pMpi2ConfigReply_t)recv_memp;
+	recv_numbytes = sizeof (MPI2_CONFIG_REPLY);
+
+	/*
+	 * Get the Configuration Reply message and check the IOC status field
+	 * to verify that the request succeeded.
+	 */
+	if (mptsas_get_handshake_msg(mpt, recv_memp, recv_numbytes,
+	    recv_accessp)) {
+		rval = DDI_FAILURE;
+		goto done;
+	}
+
+	if ((iocstatus = ddi_get16(recv_accessp, &configreply->IOCStatus)) !=
+	    MPI2_IOCSTATUS_SUCCESS) {
+		mptsas_log(mpt, CE_WARN, "mptsas_get_manufacture_page7 update: "
+		    "IOCStatus=0x%x, IOCLogInfo=0x%x", iocstatus,
+		    ddi_get32(recv_accessp, &configreply->IOCLogInfo));
+		goto done;
+	}
+
+	/*
+	 * The IOC status indicated success so now we set up a new DMA binding
+	 * to receive the full contents of Manufacturing page 0x7.
+	 *
+	 * The MPI2_CONFIG_PAGE_MAN_7 struct allocates an array for only a
+	 * single connector.  The idea is you would read a subset of the page
+	 * into that struct to get the number of PHYs (stored in byte 0x20) and
+	 * then based on that value, construct an appropriate sized DMA binding
+	 * to read the entire page in.
+	 *
+	 * But this two-step process isn't necessary as we've already found
+	 * out the number of PHYs from previously reading in Manufacturing
+	 * page 0x5.  So we can use that value to read the whole page in.
+	 */
+	page_sz = sizeof (MPI2_CONFIG_PAGE_MAN_7) +
+	    ((mpt->m_num_phys - 1) * sizeof (MPI2_MANPAGE7_CONNECTOR_INFO));
+
+	page_dma_attrs = mpt->m_msg_dma_attr;
+	page_dma_attrs.dma_attr_sgllen = 1;
+	page_dma_attrs.dma_attr_granular = page_sz;
+
+	if (mptsas_dma_addr_create(mpt, page_dma_attrs, &page_dma_handle,
+	    &page_accessp, &page_memp, page_sz, &page_cookie) == FALSE) {
+		rval = DDI_FAILURE;
+		goto done;
+	}
+	free_page = B_TRUE;
+
+	bzero(page_memp, page_sz);
+	m7 = (pMpi2ManufacturingPage7_t)page_memp;
+	NDBG20(("mptsas_get_manufacture_page7: paddr 0x%p",
+	    (void *)(uintptr_t)page_cookie.dmac_laddress));
+
+	/*
+	 * Send a READ_CURRENT Configuration Request message to get the
+	 * contents of Manufacturing page 0x7.
+	 */
+	flagslength = page_sz;
+	flagslength |= ((uint32_t)(MPI2_SGE_FLAGS_LAST_ELEMENT |
+	    MPI2_SGE_FLAGS_END_OF_BUFFER | MPI2_SGE_FLAGS_SIMPLE_ELEMENT |
+	    MPI2_SGE_FLAGS_SYSTEM_ADDRESS | MPI2_SGE_FLAGS_64_BIT_ADDRESSING |
+	    MPI2_SGE_FLAGS_IOC_TO_HOST |
+	    MPI2_SGE_FLAGS_END_OF_LIST) << MPI2_SGE_FLAGS_SHIFT);
+
+	if (mptsas_send_config_request_msg(mpt,
+	    MPI2_CONFIG_ACTION_PAGE_READ_CURRENT,
+	    MPI2_CONFIG_PAGETYPE_MANUFACTURING, 0, 7,
+	    ddi_get8(recv_accessp, &configreply->Header.PageVersion),
+	    ddi_get8(recv_accessp, &configreply->Header.PageLength),
+	    flagslength, page_cookie.dmac_laddress)) {
+		rval = DDI_FAILURE;
+		goto done;
+	}
+
+	/*
+	 * Get the new MPI Configuration Reply message and check the IOC
+	 * status field to verify that the request succeeded.
+	 */
+	if (mptsas_get_handshake_msg(mpt, recv_memp, recv_numbytes,
+	    recv_accessp)) {
+		rval = DDI_FAILURE;
+		goto done;
+	}
+
+	if ((iocstatus = ddi_get16(recv_accessp, &configreply->IOCStatus)) !=
+	    MPI2_IOCSTATUS_SUCCESS) {
+		mptsas_log(mpt, CE_WARN, "mptsas_get_manufacture_page7 config:"
+		    " IOCStatus=0x%x, IOCLogInfo=0x%x", iocstatus,
+		    ddi_get32(recv_accessp, &configreply->IOCLogInfo));
+		goto done;
+	}
+
+	(void) ddi_dma_sync(page_dma_handle, 0, 0, DDI_DMA_SYNC_FORCPU);
+
+	nphys = ddi_get8(page_accessp, (uint8_t *)(void *)&m7->NumPhys);
+	ASSERT(nphys == mpt->m_num_phys);
+
+	/* m7flags = ddi_get32(page_accessp, (uint32_t *)(void *)&m7->Flags); */
+
+	mpt->m_connector_info = fnvlist_alloc();
+	conn_info_nv = kmem_zalloc(nphys * sizeof (nvlist_t *), KM_SLEEP);
+
+	for (uint_t phy = 0; phy < nphys; phy++) {
+		uint32_t pinout;
+		/* uint16_t slot; */
+		uint8_t conn_loc, recep_id, conn_type;
+		char conn_name[16];
+
+
+		pinout = ddi_get32(page_accessp,
+		    (uint32_t *)(void *)&m7->ConnectorInfo[phy].Pinout);
+		conn_type = pinout & MPI2_MANPAGE7_PINOUT_TYPE_MASK;
+
+		conn_loc = ddi_get8(page_accessp,
+		    (uint8_t *)(void *)&m7->ConnectorInfo[phy].Location);
+		recep_id = ddi_get8(page_accessp,
+		    (uint8_t *)(void *)&m7->ConnectorInfo[phy].ReceptacleID);
+		/*
+		 * slot = ddi_get16(page_accessp,
+		 *   (uint16_t *)(void *)&m7->ConnectorInfo[phy].Slot);
+		 */
+
+		for (uint_t i = 0; i < 16; i++) {
+			conn_name[i] = ddi_get8(page_accessp,
+			    (uint8_t *)(void *)
+			    &m7->ConnectorInfo[phy].Connector[i]);
+		}
+		conn_info_nv[phy] = fnvlist_alloc();
+		fnvlist_add_uint8(conn_info_nv[phy], MPTSAS_CONN_TYPE,
+		    conn_type);
+		fnvlist_add_uint8(conn_info_nv[phy], MPTSAS_CONN_LOCATION,
+		    conn_loc);
+		fnvlist_add_uint8(conn_info_nv[phy], MPTSAS_RECEPTACLE_ID,
+		    recep_id);
+		if (strlen(conn_name) > 0) {
+			fnvlist_add_string(conn_info_nv[phy], MPTSAS_CONN_NAME,
+			    conn_name);
+		}
+	}
+	fnvlist_add_nvlist_array(mpt->m_connector_info, MPTSAS_CONN_INFO,
+	    conn_info_nv, nphys);
+
+	if ((mptsas_check_dma_handle(recv_dma_handle) != DDI_SUCCESS) ||
+	    (mptsas_check_dma_handle(page_dma_handle) != DDI_SUCCESS)) {
+		ddi_fm_service_impact(mpt->m_dip, DDI_SERVICE_UNAFFECTED);
+		rval = DDI_FAILURE;
+		goto done;
+	}
+	if ((mptsas_check_acc_handle(recv_accessp) != DDI_SUCCESS) ||
+	    (mptsas_check_acc_handle(page_accessp) != DDI_SUCCESS)) {
+		ddi_fm_service_impact(mpt->m_dip, DDI_SERVICE_UNAFFECTED);
+		rval = DDI_FAILURE;
+	}
+done:
+	/*
+	 * free up memory
+	 */
+	if (free_recv)
+		mptsas_dma_addr_destroy(&recv_dma_handle, &recv_accessp);
+	if (free_page)
+		mptsas_dma_addr_destroy(&page_dma_handle, &page_accessp);
+	MPTSAS_ENABLE_INTR(mpt);
 
 	return (rval);
 }

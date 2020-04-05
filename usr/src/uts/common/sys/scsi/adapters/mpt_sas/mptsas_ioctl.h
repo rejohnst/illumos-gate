@@ -24,7 +24,7 @@
  * Use is subject to license terms.
  */
 /*
- * Copyright (c) 2013, Joyent, Inc. All rights reserved.
+ * Copyright 2020 Joyent, Inc.
  * Copyright 2014 Nexenta Systems, Inc. All rights reserved.
  * Copyright (c) 2014, Tegile Systems Inc. All rights reserved.
  */
@@ -78,6 +78,7 @@ extern "C" {
 #define	MPTIOCTL_REG_ACCESS		(MPTIOCTL | 10)
 #define	MPTIOCTL_GET_DISK_INFO		(MPTIOCTL | 11)
 #define	MPTIOCTL_LED_CONTROL		(MPTIOCTL | 12)
+#define	MPTIOCTL_GET_CONNECTOR_INFO	(MPTIOCTL | 13)
 
 /*
  *  The following are our ioctl() return status values.  If everything went
@@ -332,6 +333,28 @@ typedef struct mptsas_get_disk_info32
 	caddr32_t		PtrDiskInfoArray;
 	uint64_t		DiskInfoArraySize;
 } mptsas_get_disk_info32_t;
+
+#endif /* _KERNEL */
+
+#define	MPTSAS_CONN_INFO	"connector-info"
+#define	MPTSAS_CONN_NAME	"connector-name"
+#define	MPTSAS_CONN_LOCATION	"connector-location"
+#define	MPTSAS_CONN_TYPE	"connector-type"
+#define	MPTSAS_RECEPTACLE_ID	"receptacle-id"
+
+typedef struct mptsas_get_connector_info
+{
+	size_t			mci_bufsz;
+	caddr_t			mci_buf;
+} mptsas_get_connector_info_t;
+
+#ifdef _KERNEL
+
+typedef struct mptsas_get_connector_info32
+{
+	size32_t		mci_bufsz;
+	caddr32_t		mci_buf;
+} mptsas_get_connector_info32_t;
 
 #endif /* _KERNEL */
 

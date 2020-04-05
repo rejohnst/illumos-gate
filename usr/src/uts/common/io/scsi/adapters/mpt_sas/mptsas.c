@@ -22,7 +22,7 @@
 /*
  * Copyright (c) 2009, 2010, Oracle and/or its affiliates. All rights reserved.
  * Copyright 2016 Nexenta Systems, Inc. All rights reserved.
- * Copyright 2019 Joyent, Inc.
+ * Copyright 2020 Joyent, Inc.
  * Copyright 2014 OmniTI Computer Consulting, Inc. All rights reserved.
  * Copyright (c) 2014, Tegile Systems Inc. All rights reserved.
  */
@@ -1413,7 +1413,9 @@ mptsas_attach(dev_info_t *dip, ddi_attach_cmd_t cmd)
 	    offsetof(mptsas_target_t, m_link), 0, KM_SLEEP);
 
 	/*
-	 * Fill in the phy_info structure and get the base WWID
+	 * Read in and process Manufacturing pages 0, 5, and 7.  We use the
+	 * data in these pages to fill in the phy_info structure, get the base
+	 * WWID and get the physical connector info.
 	 */
 	if (mptsas_get_manufacture_page5(mpt) == DDI_FAILURE) {
 		mptsas_log(mpt, CE_WARN,
@@ -1430,6 +1432,12 @@ mptsas_attach(dev_info_t *dip, ddi_attach_cmd_t cmd)
 	if (mptsas_get_manufacture_page0(mpt) == DDI_FAILURE) {
 		mptsas_log(mpt, CE_WARN,
 		    "mptsas_get_manufacture_page0 failed!");
+		goto fail;
+	}
+
+	if (mptsas_get_manufacture_page7(mpt) == DDI_FAILURE) {
+		mptsas_log(mpt, CE_WARN,
+		    "mptsas_get_manufacture_page7 failed!");
 		goto fail;
 	}
 
@@ -12845,6 +12853,68 @@ copy_out:
 }
 
 static int
+get_connector_info(mptsas_t *mpt, intptr_t data, int mode)
+{
+	size_t nvlsz;
+	char *buf;
+	int ret = 0;
+
+	STRUCT_DECL(mptsas_get_connector_info, gci);
+
+	if ((mode & FREAD) == 0)
+		return (EACCES);
+
+	STRUCT_INIT(gci, get_udatamodel());
+
+	if (ddi_copyin((void *)data, STRUCT_BUF(gci), STRUCT_SIZE(gci),
+	    mode) != 0) {
+		return (EFAULT);
+	}
+
+	ret = nvlist_size(mpt->m_connector_info, &nvlsz, NV_ENCODE_NATIVE);
+	if (ret != 0)
+		return (ret);
+
+	/*
+	 * If the caller-supplied buffer is NULL, then simply fill in the
+	 * mci_bufsz with the size of buffer that will be required to hold the
+	 * connector info.
+	 */
+	if (STRUCT_FGETP(gci, mci_buf) == NULL) {
+		STRUCT_FSET(gci, mci_bufsz, nvlsz);
+		goto copy_out;
+	}
+
+	/*
+	 * If we haven't been given a large enough buffer to copy out into,
+	 * let the caller know.
+	 */
+	if (STRUCT_FGET(gci, mci_bufsz) < nvlsz) {
+		ret = ENOSPC;
+		goto copy_out;
+	}
+
+	buf = fnvlist_pack(mpt->m_connector_info, &nvlsz);
+	STRUCT_FSET(gci, mci_bufsz, nvlsz);
+
+	/* Copy out the disk information to the caller. */
+	if (ddi_copyout((void *)buf, STRUCT_FGETP(gci, mci_buf), nvlsz,
+	    mode) != 0) {
+		ret = EFAULT;
+	}
+
+	kmem_free(buf, nvlsz);
+
+copy_out:
+	if (ddi_copyout(STRUCT_BUF(gci), (void *)data, STRUCT_SIZE(gci),
+	    mode) != 0) {
+		ret = EFAULT;
+	}
+
+	return (ret);
+}
+
+static int
 mptsas_ioctl(dev_t dev, int cmd, intptr_t data, int mode, cred_t *credp,
     int *rval)
 {
@@ -12929,6 +12999,9 @@ mptsas_ioctl(dev_t dev, int cmd, intptr_t data, int mode, cred_t *credp,
 		goto out;
 	}
 	switch (cmd) {
+		case MPTIOCTL_GET_CONNECTOR_INFO:
+			status = get_connector_info(mpt, data, mode);
+			break;
 		case MPTIOCTL_GET_DISK_INFO:
 			status = get_disk_info(mpt, data, mode);
 			break;

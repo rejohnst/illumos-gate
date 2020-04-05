@@ -22,7 +22,7 @@
 /*
  * Copyright (c) 2009, 2010, Oracle and/or its affiliates. All rights reserved.
  * Copyright 2015 Nexenta Systems, Inc. All rights reserved.
- * Copyright 2019 Joyent, Inc.
+ * Copyright 2020 Joyent, Inc.
  * Copyright (c) 2014, Tegile Systems Inc. All rights reserved.
  */
 
@@ -630,10 +630,6 @@ typedef struct mptsas_tgt_private {
 		mpt->m_max_requests))
 #define	MPTSAS_TM_SLOT(mpt)	(mpt->m_max_requests - 1)
 
-/*
- * Macro for phy_flags
- */
-
 typedef struct smhba_info {
 	kmutex_t	phy_mutex;
 	uint8_t		phy_id;
@@ -903,6 +899,9 @@ typedef struct mptsas {
 	uint8_t			m_port_chng;	/* initiator port changes */
 	MPI2_CONFIG_PAGE_MAN_0   m_MANU_page0;   /* Manufactor page 0 info */
 	MPI2_CONFIG_PAGE_MAN_1   m_MANU_page1;   /* Manufactor page 1 info */
+
+	/* Connector info sourced from Manufacturing Page 7 */
+	nvlist_t		*m_connector_info;
 
 	/* FMA Capabilities */
 	int			m_fm_capabilities;
@@ -1372,6 +1371,7 @@ int mptsas_get_sas_expander_page0(mptsas_t *mpt, uint32_t page_address,
     mptsas_smp_t *info);
 int mptsas_set_ioc_params(mptsas_t *mpt);
 int mptsas_get_manufacture_page5(mptsas_t *mpt);
+int mptsas_get_manufacture_page7(mptsas_t *mpt);
 int mptsas_get_sas_port_page0(mptsas_t *mpt, uint32_t page_address,
     uint64_t *sas_wwn, uint8_t *portwidth);
 int mptsas_get_bios_page3(mptsas_t *mpt,  uint32_t *bios_version);

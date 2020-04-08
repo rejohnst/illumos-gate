@@ -122,6 +122,7 @@ typedef struct fm_ioc_data32 {
 #define	FM_PHYSCPU_INFO_SOCKET_TYPE	"socket_type"
 #define	FM_PHYSCPU_INFO_CPU_ID		"cpuid"
 #define	FM_PHYSCPU_INFO_CHIP_IDENTSTR	"chip_identstr"
+#define	FM_PHYSCPU_INFO_UCODE_REV	"ucode_revision"
 
 #ifdef	__cplusplus
 }

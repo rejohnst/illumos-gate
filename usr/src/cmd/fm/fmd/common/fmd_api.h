@@ -21,6 +21,7 @@
 
 /*
  * Copyright (c) 2004, 2010, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Joyent, Inc.
  */
 
 #ifndef	_FMD_API_H
@@ -268,6 +269,7 @@ extern uint64_t fmd_event_ena_create(fmd_hdl_t *);
 #define	FMD_XPRT_CACHE_AS_LOCAL 0x200	/* xprt caches fault as if local */
 #define	FMD_XPRT_HCONLY		0x400	/* xprt only proxies hc-scheme faults */
 #define	FMD_XPRT_HC_PRESENT_ONLY 0x800	/* only locally present hc faults */
+#define	FMD_XPRT_WRONLY		0x1000	/* xprt is write-only */
 
 extern fmd_xprt_t *fmd_xprt_open(fmd_hdl_t *, uint_t, nvlist_t *, void *);
 extern void fmd_xprt_close(fmd_hdl_t *, fmd_xprt_t *);
@@ -280,6 +282,8 @@ extern nvlist_t *fmd_xprt_translate(fmd_hdl_t *, fmd_xprt_t *, fmd_event_t *);
 extern void fmd_xprt_add_domain(fmd_hdl_t *, nvlist_t *, char *);
 extern void fmd_xprt_setspecific(fmd_hdl_t *, fmd_xprt_t *, void *);
 extern void *fmd_xprt_getspecific(fmd_hdl_t *, fmd_xprt_t *);
+
+extern void fmd_xprt_lsubscribe(fmd_hdl_t *, fmd_xprt_t *, const char *);
 
 #ifdef	__cplusplus
 }

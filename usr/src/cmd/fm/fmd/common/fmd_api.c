@@ -21,6 +21,7 @@
 
 /*
  * Copyright (c) 2004, 2010, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Joyent, Inc.
  */
 
 #include <sys/types.h>
@@ -2433,9 +2434,11 @@ fmd_xprt_open(fmd_hdl_t *hdl, uint_t flags, nvlist_t *auth, void *data)
 	}
 
 	if ((flags & FMD_XPRT_RDWR) != FMD_XPRT_RDWR &&
-	    (flags & FMD_XPRT_RDWR) != FMD_XPRT_RDONLY) {
+	    (flags & FMD_XPRT_RDWR) != FMD_XPRT_RDONLY &&
+	    ((flags & FMD_XPRT_WRONLY) != FMD_XPRT_WRONLY &&
+	    !(flags & FMD_XPRT_RDWR))) {
 		fmd_api_error(mp, EFMD_XPRT_INVAL,
-		    "cannot open write-only transport\n");
+		    "invalid transport mode\n");
 	}
 
 	if (mp->mod_stats->ms_xprtopen.fmds_value.ui32 >=
@@ -2481,6 +2484,16 @@ fmd_xprt_post(fmd_hdl_t *hdl, fmd_xprt_t *xp, nvlist_t *nvl, hrtime_t hrt)
 	fmd_module_t *mp = fmd_api_module(hdl);
 	fmd_xprt_impl_t *xip = fmd_api_transport_impl(hdl, xp);
 	nvlist_t *tmp;
+
+	/*
+	 * If this is a write-only transport, then it shouldn't be attempting
+	 * to post events to the local fmd.
+	 */
+	if (xip->xi_flags & FMD_XPRT_WRONLY) {
+		fmd_api_error(fmd_api_module_lock(hdl), EFMD_XPRT_INVAL,
+		    "fmd_xprt_post() cannot by called by a write-only "
+		    "transport\n");
+	}
 
 	/*
 	 * If this event was allocated using the module-specific nvlist ops, we
@@ -2728,4 +2741,20 @@ void *
 fmd_xprt_getspecific(fmd_hdl_t *hdl, fmd_xprt_t *xp)
 {
 	return (fmd_api_transport_impl(hdl, xp)->xi_data);
+}
+
+/*
+ * XXX - add comment here
+ */
+void
+fmd_xprt_lsubscribe(fmd_hdl_t *hdl, fmd_xprt_t *xp, const char *class)
+{
+	fmd_xprt_impl_t *xip = fmd_api_transport_impl(hdl, xp);
+
+	if (!(xip->xi_flags & FMD_XPRT_WRONLY)) {
+		fmd_api_error(fmd_api_module_lock(hdl), EFMD_XPRT_INVAL,
+		    "Only WRONLY transports can call fmd_xprt_lsubscribe()\n");
+	}
+
+	fmd_xprt_lsub(xip, class);
 }

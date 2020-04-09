@@ -137,4 +137,5 @@ SYMBOL_SCOPE {
 	fmd_xprt_suspend		{ TYPE = function; FLAGS = extern };
 	fmd_xprt_translate		{ TYPE = function; FLAGS = extern };
 	fmd_xprt_add_domain		{ TYPE = function; FLAGS = extern };
+	fmd_xprt_lsubscribe		{ TYPE = function; FLAGS = extern };
 };

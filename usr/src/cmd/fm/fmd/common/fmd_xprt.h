@@ -23,6 +23,9 @@
  * Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
  * Use is subject to license terms.
  */
+/*
+ * Copyright (c) 2019, Joyent, Inc.
+ */
 
 #ifndef	_FMD_XPRT_H
 #define	_FMD_XPRT_H
@@ -133,11 +136,13 @@ typedef struct fmd_xprt_impl {
 #define	FMD_XPRT_CACHE_AS_LOCAL 0x200	/* xprt caches fault as if local */
 #define	FMD_XPRT_HCONLY		0x400	/* xprt only proxies hc-scheme faults */
 #define	FMD_XPRT_HC_PRESENT_ONLY 0x800	/* only locally present hc faults */
+#define	FMD_XPRT_WRONLY		0x1000	/* xprt is write-only */
 
 #define	FMD_XPRT_CMASK /* xprt create flag mask */ \
 	(FMD_XPRT_RDWR | FMD_XPRT_ACCEPT | FMD_XPRT_SUSPENDED | \
 	FMD_XPRT_EXTERNAL | FMD_XPRT_NO_REMOTE_REPAIR | \
-	FMD_XPRT_CACHE_AS_LOCAL | FMD_XPRT_HCONLY | FMD_XPRT_HC_PRESENT_ONLY)
+	FMD_XPRT_CACHE_AS_LOCAL | FMD_XPRT_HCONLY | FMD_XPRT_WRONLY | \
+	FMD_XPRT_HC_PRESENT_ONLY)
 #define	FMD_XPRT_SMASK	\
 	(FMD_XPRT_SUSPENDED | FMD_XPRT_ISUSPENDED | FMD_XPRT_DSUSPENDED)
 
@@ -158,6 +163,8 @@ extern void fmd_xprt_subscribe_all(const char *);
 extern void fmd_xprt_unsubscribe_all(const char *);
 extern void fmd_xprt_suspend_all(void);
 extern void fmd_xprt_resume_all(void);
+
+extern void fmd_xprt_lsub(fmd_xprt_impl_t *, const char *);
 
 #ifdef	__cplusplus
 }

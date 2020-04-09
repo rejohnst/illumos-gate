@@ -21,6 +21,7 @@
 
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Joyent, Inc.
  */
 
 /*
@@ -66,7 +67,7 @@
  *             +-----| RUN |<----+
  *                   +--^--+
  *                      |
- *               FMD_XPRT_RDONLY
+ *      FMD_XPRT_RDONLY or FMD_XPRT_WRONLY
  *
  * When fmd_xprt_open() is called without FMD_XPRT_ACCEPT, the Common Transport
  * Layer enqueues a "syn" event for the module in its event queue and sets the
@@ -578,6 +579,18 @@ fmd_xprt_event_run(fmd_xprt_impl_t *xip, nvlist_t *nvl)
 }
 
 void
+fmd_xprt_lsub(fmd_xprt_impl_t *xip, const char *class)
+{
+	(void) pthread_mutex_lock(&xip->xi_lock);
+	(void) fmd_xprt_class_hash_insert(xip, &xip->xi_lsub, class);
+	(void) pthread_mutex_unlock(&xip->xi_lock);
+
+	(void) pthread_mutex_lock(&xip->xi_stats_lock);
+	xip->xi_stats->xs_subscriptions.fmds_value.ui64++;
+	(void) pthread_mutex_unlock(&xip->xi_stats_lock);
+}
+
+void
 fmd_xprt_event_sub(fmd_xprt_impl_t *xip, nvlist_t *nvl)
 {
 	char *class;
@@ -588,13 +601,7 @@ fmd_xprt_event_sub(fmd_xprt_impl_t *xip, nvlist_t *nvl)
 	if (nvlist_lookup_string(nvl, FM_RSRC_XPRT_SUBCLASS, &class) != 0)
 		return; /* malformed protocol event */
 
-	(void) pthread_mutex_lock(&xip->xi_lock);
-	(void) fmd_xprt_class_hash_insert(xip, &xip->xi_lsub, class);
-	(void) pthread_mutex_unlock(&xip->xi_lock);
-
-	(void) pthread_mutex_lock(&xip->xi_stats_lock);
-	xip->xi_stats->xs_subscriptions.fmds_value.ui64++;
-	(void) pthread_mutex_unlock(&xip->xi_stats_lock);
+	fmd_xprt_lsub(xip, class);
 }
 
 void
@@ -845,14 +852,16 @@ fmd_xprt_create(fmd_module_t *mp, uint_t flags, nvlist_t *auth, void *data)
 
 	/*
 	 * Determine our initial state based upon the creation flags.  If we're
-	 * read-only, go directly to RUN.  If we're accepting a new connection,
-	 * wait for a SYN.  Otherwise send a SYN and wait for an ACK.
+	 * read-only or write-only, go directly to RUN.  If we're accepting a
+	 * new connection, wait for a SYN.  Otherwise send a SYN and wait for
+	 * an ACK.
 	 */
-	if ((flags & FMD_XPRT_RDWR) == FMD_XPRT_RDONLY) {
+	if ((flags & FMD_XPRT_RDWR) == FMD_XPRT_RDONLY ||
+	    (flags & FMD_XPRT_WRONLY) == FMD_XPRT_WRONLY) {
 		/*
-		 * Send the list.suspects across here for readonly transports.
-		 * For read-write transport they will be sent on transition to
-		 * RUN state in fmd_xprt_event_run().
+		 * Send the list.suspects across here for readonly/writeonly
+		 * transports.  For read-write transport they will be sent on
+		 * transitions to RUN state in fmd_xprt_event_run().
 		 */
 		fmd_case_hash_apply(fmd.d_cases, fmd_xprt_send_case_ro, mp);
 		fmd_xprt_transition(xip, _fmd_xprt_state_run, "RUN");
@@ -905,8 +914,15 @@ fmd_xprt_create(fmd_module_t *mp, uint_t flags, nvlist_t *auth, void *data)
 	/*
 	 * If the transport is not being opened to accept an inbound connect,
 	 * start an outbound connection by enqueuing a SYN event for our peer.
+	 *
+	 * Skip enqqueing the SYN event if we're a write-only transport as the
+	 * peer will not be FM-aware and so won't know what to do with a
+	 * transport control event.  In this case, it's up to the transport
+	 * module to perform whatever actions are neceesary to establish a
+	 * the connection to the peer such that the transport is ready to be
+	 * able to send events to the peer before opening the transport.
 	 */
-	if (!(flags & FMD_XPRT_ACCEPT)) {
+	if (!(flags & FMD_XPRT_ACCEPT) && !(flags & FMD_XPRT_WRONLY)) {
 		nvl = fmd_protocol_xprt_ctl(mp,
 		    "resource.fm.xprt.syn", FM_RSRC_XPRT_VERSION);
 
@@ -1807,7 +1823,7 @@ fmd_xprt_uuresolved(fmd_xprt_t *xp, const char *uuid)
  */
 void
 fmd_xprt_updated(fmd_xprt_t *xp, const char *uuid, uint8_t *statusp,
-	uint8_t *has_asrup, uint_t nelem)
+    uint8_t *has_asrup, uint_t nelem)
 {
 	fmd_xprt_impl_t *xip = (fmd_xprt_impl_t *)xp;
 

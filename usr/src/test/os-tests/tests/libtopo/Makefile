@@ -18,7 +18,8 @@ include $(SRC)/Makefile.master
 ROOTOPTPKG = $(ROOT)/opt/os-tests
 TESTDIR = $(ROOTOPTPKG)/tests/libtopo
 
-PROGS = digraph-test
+FACILITY_TEST = facility-test
+PROGS = digraph-test $(FACILITY_TEST)
 
 XML =	digraph-test-in.xml \
 	digraph-test-in-badscheme.xml \
@@ -38,6 +39,8 @@ $(CMDS) := FILEMODE = 0555
 
 FILES = $(XML:%=$(TESTDIR)/%)
 $(FILES) := FILEMODE = 0444
+
+$(FACILITY_TEST) := LDLIBS += -lnvpair
 
 all: $(PROGS)
 

@@ -57,6 +57,7 @@ file path=opt/os-tests/tests/libtopo/digraph-test-in-badelement.xml mode=0444
 file path=opt/os-tests/tests/libtopo/digraph-test-in-badnum.xml mode=0444
 file path=opt/os-tests/tests/libtopo/digraph-test-in-badscheme.xml mode=0444
 file path=opt/os-tests/tests/libtopo/digraph-test-in.xml mode=0444
+file path=opt/os-tests/tests/libtopo/facility-test mode=0555
 file path=opt/os-tests/tests/odirectory.32 mode=0555
 file path=opt/os-tests/tests/odirectory.64 mode=0555
 file path=opt/os-tests/tests/pf_key/acquire-compare mode=0555

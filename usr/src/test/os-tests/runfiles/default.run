@@ -93,4 +93,4 @@ tests = ['atrparse']
 
 [/opt/os-tests/tests/libtopo]
 user = root
-tests = ['digraph-test']
+tests = ['digraph-test', 'facility-test']
